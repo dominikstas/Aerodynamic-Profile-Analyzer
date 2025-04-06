@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from naca_data import naca_data
+import aero_calculations
 
 class Airfoil:
     def __init__(self, root):
@@ -277,16 +278,27 @@ class Airfoil:
         density = self.air_density.get()
         area = self.wing_area.get()
         
-        # Na tym etapie tylko wyświetlamy komunikat
-        print(f"Wybrano profil: {profile}")
-        print(f"Parametry: kąt={angle}°, prędkość={speed} m/s, gęstość={density} kg/m³, powierzchnia={area} m²")
-        print("Funkcjonalność obliczeniowa zostanie dodana w przyszłości.")
+        # Use the aerodynamic calculations module
+        results = aero_calculations.analyze_airfoil(
+            alpha=angle,
+            V=speed,
+            rho=density,
+            S=area,
+            profile_name=profile,
+            profiles_data=naca_data
+        )
         
-        # Aktualizacja wykresu z danymi wybranego profilu
-        self.update_plot(profile)
+        # Print results to console (optional)
+        print(f"Analiza dla profilu: {results['profile']}")
+        print(f"Siła nośna: {results['lift']:.2f} N")
+        print(f"Opór: {results['drag']:.2f} N")
+        print(f"Współczynnik L/D: {results['L_D_ratio']:.2f}")
+        
+        # Aktualizacja wykresu z danymi wybranego profilu i wynikami
+        self.update_plot(profile, results)
     
-    def update_plot(self, profile):
-        """Aktualizuje wykres danymi wybranego profilu"""
+    def update_plot(self, profile, results=None):
+        """Aktualizuje wykres danymi wybranego profilu i wynikami obliczeń"""
         # Czyszczenie wykresu
         self.plot.clear()
         
@@ -302,11 +314,37 @@ class Airfoil:
         
         # Rysowanie danych
         self.plot.plot(profile_data["alpha"], profile_data["CL"], 
-                      marker='o', color=self.colors["medium_navy"], 
-                      label="CL")
+                    marker='o', color=self.colors["medium_navy"], 
+                    label="CL")
         self.plot.plot(profile_data["alpha"], profile_data["CD"], 
-                      marker='s', color=self.colors["light_navy"], 
-                      label="CD")
+                    marker='s', color=self.colors["light_navy"], 
+                    label="CD")
+        
+        # Jeśli mamy wyniki obliczeń, zaznaczamy aktualny punkt na wykresie
+        if results:
+            # Zaznaczenie aktualnego punktu dla CL
+            self.plot.scatter([results["alpha"]], [results["CL"]], 
+                            s=100, color='red', marker='o', 
+                            label=f"CL={results['CL']:.3f}")
+            
+            # Zaznaczenie aktualnego punktu dla CD
+            self.plot.scatter([results["alpha"]], [results["CD"]], 
+                            s=100, color='red', marker='s', 
+                            label=f"CD={results['CD']:.3f}")
+            
+            # Dodanie informacji o siłach i stosunku L/D na wykresie
+            info_text = f"Siła nośna: {results['lift']:.1f} N\n"
+            info_text += f"Opór: {results['drag']:.1f} N\n"
+            info_text += f"L/D: {results['L_D_ratio']:.2f}"
+            
+            # Dodanie tekstowych informacji w rogu wykresu
+            self.plot.text(0.02, 0.98, info_text,
+                        transform=self.plot.transAxes,
+                        fontsize=9,
+                        verticalalignment='top',
+                        bbox=dict(boxstyle='round', 
+                                    facecolor='white', 
+                                    alpha=0.8))
         
         # Dodanie legendy
         self.plot.legend()
