@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -30,6 +30,8 @@ class Airfoil:
         self.air_speed = tk.DoubleVar(value=20.0)
         self.air_density = tk.DoubleVar(value=1.225)  # kg/m³ dla powietrza przy poziomie morza
         self.wing_area = tk.DoubleVar(value=10.0)  # m²
+        self.chord_length = tk.DoubleVar(value=1.0)  # m
+        self.kinematic_viscosity = tk.DoubleVar(value=1.48e-5)  # m²/s dla powietrza przy 20°C
         
         # Konfiguracja stylu
         self.configure_style()
@@ -208,12 +210,49 @@ class Airfoil:
         area_entry = ttk.Entry(params_frame, textvariable=self.wing_area)
         area_entry.pack(fill=tk.X, pady=(5, 0))
         
+        # Advanced parameters section
+        advanced_frame = ttk.LabelFrame(inner_frame, 
+                                     text="Parametry dodatkowe", 
+                                     style="Panel.TLabelframe",
+                                     padding=15)
+        advanced_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Długość cięciwy
+        ttk.Label(advanced_frame, 
+                 text="Długość cięciwy [m]:", 
+                 style="Panel.TLabel").pack(anchor="w")
+        chord_entry = ttk.Entry(advanced_frame, textvariable=self.chord_length)
+        chord_entry.pack(fill=tk.X, pady=(5, 15))
+        
+        # Lepkość kinematyczna
+        ttk.Label(advanced_frame, 
+                 text="Lepkość kinematyczna [m²/s]:", 
+                 style="Panel.TLabel").pack(anchor="w")
+        viscosity_entry = ttk.Entry(advanced_frame, textvariable=self.kinematic_viscosity)
+        viscosity_entry.pack(fill=tk.X, pady=(5, 0))
+        
         # Przycisk "Oblicz"
         calculate_button = ttk.Button(inner_frame, 
                                      text="OBLICZ", 
                                      command=self.calculate,
                                      width=25)
         calculate_button.pack(pady=(15, 0))
+        
+        # Przyciski eksportu
+        export_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
+        export_frame.pack(fill=tk.X, pady=(15, 0))
+        
+        export_data_btn = ttk.Button(export_frame, 
+                                   text="Eksportuj dane", 
+                                   command=self.export_data,
+                                   width=12)
+        export_data_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        save_plot_btn = ttk.Button(export_frame, 
+                                  text="Zapisz wykres", 
+                                  command=self.save_plot,
+                                  width=12)
+        save_plot_btn.pack(side=tk.LEFT)
 
     def setup_chart_panel(self, parent):
         """Konfiguracja panelu z wykresem"""
@@ -259,9 +298,16 @@ class Airfoil:
         self.canvas = FigureCanvasTkAgg(self.figure, chart_frame)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
+        # Dodanie toolbar'a Matplotlib
+        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+        toolbar_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
+        toolbar_frame.pack(fill=tk.X, pady=(5, 15))
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar.update()
+        
         # Panel informacyjny pod wykresem
         info_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
-        info_frame.pack(fill=tk.X, pady=(15, 0))
+        info_frame.pack(fill=tk.X, pady=(0, 0))
         
         info_label = ttk.Label(info_frame, 
                               text="Wybierz profil i parametry, a następnie kliknij 'OBLICZ' aby zobaczyć wyniki.", 
@@ -270,13 +316,43 @@ class Airfoil:
                               font=("Arial", 10, "italic"))
         info_label.pack(anchor="w")
         
+    def validate_inputs(self):
+        """Validate user inputs before calculations"""
+        try:
+            angle = self.angle_of_attack.get()
+            speed = self.air_speed.get()
+            density = self.air_density.get()
+            area = self.wing_area.get()
+            
+            # Check for valid ranges
+            if not (-20 <= angle <= 30):
+                return False, "Kąt natarcia powinien być w zakresie od -20° do 30°"
+            if speed <= 0:
+                return False, "Prędkość powietrza musi być większa niż zero"
+            if density <= 0:
+                return False, "Gęstość powietrza musi być większa niż zero"
+            if area <= 0:
+                return False, "Powierzchnia skrzydła musi być większa niż zero"
+                
+            return True, ""
+        except tk.TclError:
+            return False, "Wprowadź poprawne wartości liczbowe"
+            
     def calculate(self):
         """Metoda wywoływana po kliknięciu przycisku 'Oblicz'"""
+        # Walidacja danych wejściowych
+        valid, error_msg = self.validate_inputs()
+        if not valid:
+            messagebox.showerror("Błąd", error_msg)
+            return
+            
         profile = self.selected_profile.get()
         angle = self.angle_of_attack.get()
         speed = self.air_speed.get()
         density = self.air_density.get()
         area = self.wing_area.get()
+        chord = self.chord_length.get()
+        viscosity = self.kinematic_viscosity.get()
         
         # Use the aerodynamic calculations module
         results = aero_calculations.analyze_airfoil(
@@ -288,11 +364,19 @@ class Airfoil:
             profiles_data=naca_data
         )
         
+        # Calculate Reynolds number
+        reynolds = aero_calculations.calculate_reynolds_number(speed, chord, viscosity)
+        results["reynolds"] = reynolds
+        
+        # Store results for possible export
+        self.last_results = results
+        
         # Print results to console (optional)
         print(f"Analiza dla profilu: {results['profile']}")
         print(f"Siła nośna: {results['lift']:.2f} N")
         print(f"Opór: {results['drag']:.2f} N")
         print(f"Współczynnik L/D: {results['L_D_ratio']:.2f}")
+        print(f"Liczba Reynoldsa: {reynolds:.2e}")
         
         # Aktualizacja wykresu z danymi wybranego profilu i wynikami
         self.update_plot(profile, results)
@@ -315,10 +399,17 @@ class Airfoil:
         # Rysowanie danych
         self.plot.plot(profile_data["alpha"], profile_data["CL"], 
                     marker='o', color=self.colors["medium_navy"], 
-                    label="CL")
+                    label="CL", linewidth=2)
         self.plot.plot(profile_data["alpha"], profile_data["CD"], 
                     marker='s', color=self.colors["light_navy"], 
-                    label="CD")
+                    label="CD", linewidth=2)
+        
+        # Zapisanie danych do użycia w tooltipach
+        self.plot_data = {
+            'x': profile_data["alpha"],
+            'cl': profile_data["CL"],
+            'cd': profile_data["CD"]
+        }
         
         # Jeśli mamy wyniki obliczeń, zaznaczamy aktualny punkt na wykresie
         if results:
@@ -335,7 +426,8 @@ class Airfoil:
             # Dodanie informacji o siłach i stosunku L/D na wykresie
             info_text = f"Siła nośna: {results['lift']:.1f} N\n"
             info_text += f"Opór: {results['drag']:.1f} N\n"
-            info_text += f"L/D: {results['L_D_ratio']:.2f}"
+            info_text += f"L/D: {results['L_D_ratio']:.2f}\n"
+            info_text += f"Reynolds: {results['reynolds']:.2e}"
             
             # Dodanie tekstowych informacji w rogu wykresu
             self.plot.text(0.02, 0.98, info_text,
@@ -343,14 +435,73 @@ class Airfoil:
                         fontsize=9,
                         verticalalignment='top',
                         bbox=dict(boxstyle='round', 
-                                    facecolor='white', 
-                                    alpha=0.8))
+                                  facecolor='white', 
+                                  alpha=0.8))
         
         # Dodanie legendy
         self.plot.legend()
         
         # Odświeżenie wykresu
         self.canvas.draw()
+        
+    def export_data(self):
+        """Export calculation results to CSV file"""
+        from tkinter import filedialog
+        import csv
+        
+        if not hasattr(self, 'last_results'):
+            messagebox.showinfo("Informacja", "Brak danych do eksportu. Wykonaj najpierw obliczenia.")
+            return
+            
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title="Zapisz dane jako CSV"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["Parametr", "Wartość", "Jednostka"])
+                writer.writerow(["Profil", self.last_results['profile'], ""])
+                writer.writerow(["Kąt natarcia", self.last_results['alpha'], "°"])
+                writer.writerow(["Prędkość powietrza", self.air_speed.get(), "m/s"])
+                writer.writerow(["Gęstość powietrza", self.air_density.get(), "kg/m³"])
+                writer.writerow(["Powierzchnia skrzydła", self.wing_area.get(), "m²"])
+                writer.writerow(["Długość cięciwy", self.chord_length.get(), "m"])
+                writer.writerow(["Lepkość kinematyczna", self.kinematic_viscosity.get(), "m²/s"])
+                writer.writerow(["Współczynnik siły nośnej (CL)", self.last_results['CL'], ""])
+                writer.writerow(["Współczynnik oporu (CD)", self.last_results['CD'], ""])
+                writer.writerow(["Siła nośna", self.last_results['lift'], "N"])
+                writer.writerow(["Opór", self.last_results['drag'], "N"])
+                writer.writerow(["Współczynnik L/D", self.last_results['L_D_ratio'], ""])
+                writer.writerow(["Liczba Reynoldsa", self.last_results['reynolds'], ""])
+                
+            messagebox.showinfo("Sukces", f"Dane zostały zapisane do pliku:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Błąd", f"Błąd podczas zapisu pliku:\n{str(e)}")
+        
+    def save_plot(self):
+        """Save current plot as image file"""
+        from tkinter import filedialog
+        
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("PDF files", "*.pdf"), ("All files", "*.*")],
+            title="Zapisz wykres jako obrazek"
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            self.figure.savefig(file_path, dpi=300, bbox_inches='tight')
+            messagebox.showinfo("Sukces", f"Wykres został zapisany do pliku:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Błąd", f"Błąd podczas zapisu wykresu:\n{str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
