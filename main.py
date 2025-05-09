@@ -50,54 +50,55 @@ class Airfoil:
         style.configure("TLabelframe", background=self.colors["background"], foreground=self.colors["text"])
         style.configure("TLabelframe.Label", background=self.colors["background"], foreground=self.colors["dark_navy"], font=("Arial", 10, "bold"))
         
-        # Konfiguracja przycisków
-        style.configure("TButton", 
-                        background=self.colors["button"], 
-                        foreground="white", 
+        # Fix for button styling - create a custom style
+        style.configure("Custom.TButton", 
                         font=("Arial", 11, "bold"),
-                        borderwidth=0,
                         padding=10)
-        style.map("TButton",
-                 background=[("active", self.colors["button_hover"])],
-                 foreground=[("active", "white")])
+        
+        # Mapowanie kolorów przycisków dla różnych stanów
+        style.map("Custom.TButton",
+                background=[("active", self.colors["button_hover"]), ("!disabled", self.colors["button"])],
+                foreground=[("active", "white"), ("!disabled", "white")])
+        
+        # Rest of the style configurations remain the same...
         
         # Konfiguracja pól wejściowych
         style.configure("TEntry", 
-                       fieldbackground="white", 
-                       foreground=self.colors["text"],
-                       borderwidth=1,
-                       padding=5)
+                    fieldbackground="white", 
+                    foreground=self.colors["text"],
+                    borderwidth=1,
+                    padding=5)
         
         # Konfiguracja ComboBox
         style.configure("TCombobox", 
-                       background="white", 
-                       foreground=self.colors["text"],
-                       padding=5)
+                    background="white", 
+                    foreground=self.colors["text"],
+                    padding=5)
         
         # Konfiguracja ramki z nagłówkiem
         style.configure("NavyFrame.TFrame", 
-                       background=self.colors["dark_navy"])
+                    background=self.colors["dark_navy"])
         
         # Styl dla paneli
         style.configure("Panel.TFrame", 
-                       background="white", 
-                       relief="raised",
-                       borderwidth=0)
+                    background="white", 
+                    relief="raised",
+                    borderwidth=0)
         
         # Styl dla elementów w panelach
         style.configure("Panel.TLabel", 
-                       background="white", 
-                       foreground=self.colors["text"])
+                    background="white", 
+                    foreground=self.colors["text"])
         
         # Styl dla elementów LabelFrame w panelach
         style.configure("Panel.TLabelframe", 
-                       background="white", 
-                       foreground=self.colors["dark_navy"])
+                    background="white", 
+                    foreground=self.colors["dark_navy"])
         style.configure("Panel.TLabelframe.Label", 
-                       background="white", 
-                       foreground=self.colors["dark_navy"],
-                       font=("Arial", 10, "bold"))
-        
+                    background="white", 
+                    foreground=self.colors["dark_navy"],
+                    font=("Arial", 10, "bold"))
+            
     def setup_ui(self):
         """Konfiguracja interfejsu użytkownika"""
         # Górny nagłówek
@@ -210,32 +211,12 @@ class Airfoil:
         area_entry = ttk.Entry(params_frame, textvariable=self.wing_area)
         area_entry.pack(fill=tk.X, pady=(5, 0))
         
-        # Advanced parameters section
-        advanced_frame = ttk.LabelFrame(inner_frame, 
-                                     text="Parametry dodatkowe", 
-                                     style="Panel.TLabelframe",
-                                     padding=15)
-        advanced_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        # Długość cięciwy
-        ttk.Label(advanced_frame, 
-                 text="Długość cięciwy [m]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        chord_entry = ttk.Entry(advanced_frame, textvariable=self.chord_length)
-        chord_entry.pack(fill=tk.X, pady=(5, 15))
-        
-        # Lepkość kinematyczna
-        ttk.Label(advanced_frame, 
-                 text="Lepkość kinematyczna [m²/s]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        viscosity_entry = ttk.Entry(advanced_frame, textvariable=self.kinematic_viscosity)
-        viscosity_entry.pack(fill=tk.X, pady=(5, 0))
-        
         # Przycisk "Oblicz"
         calculate_button = ttk.Button(inner_frame, 
-                                     text="OBLICZ", 
-                                     command=self.calculate,
-                                     width=25)
+                                 text="OBLICZ", 
+                                 command=self.calculate,
+                                 style="Custom.TButton",
+                                 width=25)
         calculate_button.pack(pady=(15, 0))
         
         # Przyciski eksportu
@@ -364,10 +345,6 @@ class Airfoil:
             profiles_data=naca_data
         )
         
-        # Calculate Reynolds number
-        reynolds = aero_calculations.calculate_reynolds_number(speed, chord, viscosity)
-        results["reynolds"] = reynolds
-        
         # Store results for possible export
         self.last_results = results
         
@@ -376,7 +353,7 @@ class Airfoil:
         print(f"Siła nośna: {results['lift']:.2f} N")
         print(f"Opór: {results['drag']:.2f} N")
         print(f"Współczynnik L/D: {results['L_D_ratio']:.2f}")
-        print(f"Liczba Reynoldsa: {reynolds:.2e}")
+ 
         
         # Aktualizacja wykresu z danymi wybranego profilu i wynikami
         self.update_plot(profile, results)
@@ -427,7 +404,7 @@ class Airfoil:
             info_text = f"Siła nośna: {results['lift']:.1f} N\n"
             info_text += f"Opór: {results['drag']:.1f} N\n"
             info_text += f"L/D: {results['L_D_ratio']:.2f}\n"
-            info_text += f"Reynolds: {results['reynolds']:.2e}"
+  
             
             # Dodanie tekstowych informacji w rogu wykresu
             self.plot.text(0.02, 0.98, info_text,
@@ -471,14 +448,12 @@ class Airfoil:
                 writer.writerow(["Prędkość powietrza", self.air_speed.get(), "m/s"])
                 writer.writerow(["Gęstość powietrza", self.air_density.get(), "kg/m³"])
                 writer.writerow(["Powierzchnia skrzydła", self.wing_area.get(), "m²"])
-                writer.writerow(["Długość cięciwy", self.chord_length.get(), "m"])
-                writer.writerow(["Lepkość kinematyczna", self.kinematic_viscosity.get(), "m²/s"])
                 writer.writerow(["Współczynnik siły nośnej (CL)", self.last_results['CL'], ""])
                 writer.writerow(["Współczynnik oporu (CD)", self.last_results['CD'], ""])
                 writer.writerow(["Siła nośna", self.last_results['lift'], "N"])
                 writer.writerow(["Opór", self.last_results['drag'], "N"])
                 writer.writerow(["Współczynnik L/D", self.last_results['L_D_ratio'], ""])
-                writer.writerow(["Liczba Reynoldsa", self.last_results['reynolds'], ""])
+
                 
             messagebox.showinfo("Sukces", f"Dane zostały zapisane do pliku:\n{file_path}")
         except Exception as e:
