@@ -3,480 +3,418 @@ from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from naca_data import naca_data
+# from naca_data import naca_data  # Profile data from external file
 import aero_calculations
+
+# Sample data for testing (replace with actual naca_data import)
+naca_data = {
+    "NACA 2412": {
+        "alpha": [-10, -5, 0, 5, 10, 15, 20],
+        "CL": [-0.6, -0.1, 0.4, 0.9, 1.3, 1.5, 1.2],
+        "CD": [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12]
+    },
+    "NACA 4412": {
+        "alpha": [-10, -5, 0, 5, 10, 15, 20],
+        "CL": [-0.5, 0.1, 0.6, 1.1, 1.5, 1.7, 1.4],
+        "CD": [0.04, 0.015, 0.01, 0.015, 0.04, 0.075, 0.13]
+    }
+}
 
 class Airfoil:
     def __init__(self, root):
         self.root = root
         self.root.title("Analiza aerodynamiczna profilu skrzydła")
-        self.root.geometry("900x650")
-        self.root.minsize(900, 650)
         
-        # Definicja kolorów - paleta granatowa
+        # Responsive window sizing
+        self.setup_window()
+        
+        # Color scheme
         self.colors = {
-            "dark_navy": "#0A2463",  # Ciemny granat - główny kolor
-            "medium_navy": "#1E5BA1", # Średni granat - akcenty
-            "light_navy": "#5D9DE8",  # Jasny granat - podświetlenia
-            "background": "#F0F5FC",  # Jasne tło
-            "text": "#051336",        # Kolor tekstu
-            "button": "#2471A3",      # Kolor przycisku
-            "button_hover": "#1A5276" # Kolor przycisku po najechaniu
+            "primary": "#1E3A8A",      # Deep blue
+            "secondary": "#3B82F6",     # Medium blue
+            "accent": "#60A5FA",        # Light blue
+            "background": "#F8FAFC",    # Very light gray-blue
+            "surface": "#FFFFFF",       # White
+            "text": "#1E293B",          # Dark gray
+            "text_light": "#475569"     # Medium gray
         }
         
-        # Zmienne do przechowywania danych wejściowych
-        self.selected_profile = tk.StringVar()
+        # Variables
+        self.init_variables()
+        
+        # Setup UI
+        self.configure_styles()
+        self.create_interface()
+    
+    def setup_window(self):
+        """Configure responsive window settings"""
+        # Get screen dimensions
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # Calculate responsive dimensions (80% of screen, with limits)
+        window_width = min(max(int(screen_width * 0.8), 900), 1400)
+        window_height = min(max(int(screen_height * 0.8), 650), 900)
+        
+        # Center window on screen
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.root.minsize(900, 650)
+        
+        # Configure grid weights for responsive layout
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+    
+    def init_variables(self):
+        """Initialize input variables with default values"""
+        self.selected_profile = tk.StringVar(value=list(naca_data.keys())[0])
         self.angle_of_attack = tk.DoubleVar(value=0.0)
         self.air_speed = tk.DoubleVar(value=20.0)
-        self.air_density = tk.DoubleVar(value=1.225)  # kg/m³ dla powietrza przy poziomie morza
-        self.wing_area = tk.DoubleVar(value=10.0)  # m²
-        self.chord_length = tk.DoubleVar(value=1.0)  # m
-        self.kinematic_viscosity = tk.DoubleVar(value=1.48e-5)  # m²/s dla powietrza przy 20°C
-        
-        # Konfiguracja stylu
-        self.configure_style()
-        
-        # Inicjalizacja interfejsu
-        self.setup_ui()
+        self.air_density = tk.DoubleVar(value=1.225)
+        self.wing_area = tk.DoubleVar(value=10.0)
+        self.chord_length = tk.DoubleVar(value=1.0)
+        self.kinematic_viscosity = tk.DoubleVar(value=1.48e-5)
     
-    def configure_style(self):
-        """Konfiguracja stylów dla elementów Tkinter"""
+    def configure_styles(self):
+        """Configure ttk styles"""
+        self.root.configure(bg=self.colors["background"])
+        
         style = ttk.Style()
         
-        # Konfiguracja tła i kolorów
-        self.root.configure(bg=self.colors["background"])
+        # Configure main styles
         style.configure("TFrame", background=self.colors["background"])
-        style.configure("TLabel", background=self.colors["background"], foreground=self.colors["text"])
-        style.configure("TLabelframe", background=self.colors["background"], foreground=self.colors["text"])
-        style.configure("TLabelframe.Label", background=self.colors["background"], foreground=self.colors["dark_navy"], font=("Arial", 10, "bold"))
+        style.configure("TLabel", background=self.colors["background"], 
+                       foreground=self.colors["text"])
+        style.configure("TLabelframe", background=self.colors["background"], 
+                       foreground=self.colors["text"])
+        style.configure("TLabelframe.Label", background=self.colors["background"], 
+                       foreground=self.colors["primary"], font=("Arial", 10, "bold"))
         
-        # Fix for button styling - create a custom style
-        style.configure("Custom.TButton", 
-                        font=("Arial", 11, "bold"),
-                        padding=10)
+        # Surface (panel) styles
+        style.configure("Surface.TFrame", background=self.colors["surface"], 
+                       relief="solid", borderwidth=1)
+        style.configure("Surface.TLabel", background=self.colors["surface"], 
+                       foreground=self.colors["text"])
+        style.configure("Surface.TLabelframe", background=self.colors["surface"])
+        style.configure("Surface.TLabelframe.Label", background=self.colors["surface"], 
+                       foreground=self.colors["primary"], font=("Arial", 10, "bold"))
         
-        # Mapowanie kolorów przycisków dla różnych stanów
-        style.map("Custom.TButton",
-                background=[("active", self.colors["button_hover"]), ("!disabled", self.colors["button"])],
-                foreground=[("active", "white"), ("!disabled", "white")])
+        # Header style
+        style.configure("Header.TFrame", background=self.colors["primary"])
+        style.configure("Header.TLabel", background=self.colors["primary"], 
+                       foreground="white", font=("Arial", 16, "bold"))
         
-        # Rest of the style configurations remain the same...
+        # Button styles - Simplified and more reliable
+        style.configure("Calculate.TButton", 
+                       font=("Arial", 12, "bold"),
+                       padding=(10, 8),
+                       width=20)
         
-        # Konfiguracja pól wejściowych
-        style.configure("TEntry", 
-                    fieldbackground="white", 
-                    foreground=self.colors["text"],
-                    borderwidth=1,
-                    padding=5)
-        
-        # Konfiguracja ComboBox
-        style.configure("TCombobox", 
-                    background="white", 
-                    foreground=self.colors["text"],
-                    padding=5)
-        
-        # Konfiguracja ramki z nagłówkiem
-        style.configure("NavyFrame.TFrame", 
-                    background=self.colors["dark_navy"])
-        
-        # Styl dla paneli
-        style.configure("Panel.TFrame", 
-                    background="white", 
-                    relief="raised",
-                    borderwidth=0)
-        
-        # Styl dla elementów w panelach
-        style.configure("Panel.TLabel", 
-                    background="white", 
-                    foreground=self.colors["text"])
-        
-        # Styl dla elementów LabelFrame w panelach
-        style.configure("Panel.TLabelframe", 
-                    background="white", 
-                    foreground=self.colors["dark_navy"])
-        style.configure("Panel.TLabelframe.Label", 
-                    background="white", 
-                    foreground=self.colors["dark_navy"],
-                    font=("Arial", 10, "bold"))
-            
-    def setup_ui(self):
-        """Konfiguracja interfejsu użytkownika"""
-        # Górny nagłówek
-        header_frame = ttk.Frame(self.root, style="NavyFrame.TFrame")
-        header_frame.pack(fill=tk.X, padx=0, pady=0)
-        
-        header_label = ttk.Label(header_frame, 
-                                text="Analiza aerodynamiczna profilu skrzydła", 
-                                foreground="white", 
-                                background=self.colors["dark_navy"],
-                                font=("Arial", 18, "bold"))
-        header_label.pack(pady=15)
-        
-        # Główny kontener
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
-        
-        # Lewy panel - kontrolki
-        left_frame = ttk.Frame(main_frame, style="Panel.TFrame")
-        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 15), pady=0)
-        
-        # Dodajemy efekt cienia dla lewego panelu
-        self.add_shadow_effect(left_frame)
-        
-        # Prawy panel - na wykresy
-        right_frame = ttk.Frame(main_frame, style="Panel.TFrame")
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=0, pady=0)
-        
-        # Dodajemy efekt cienia dla prawego panelu
-        self.add_shadow_effect(right_frame)
-        
-        # Wypełniamy lewy panel
-        self.setup_control_panel(left_frame)
-        
-        # Wypełniamy prawy panel
-        self.setup_chart_panel(right_frame)
+        # Input styles
+        style.configure("TEntry", fieldbackground="white", 
+                       foreground=self.colors["text"], padding=5)
+        style.configure("TCombobox", fieldbackground="white", 
+                       foreground=self.colors["text"], padding=5)
     
-    def add_shadow_effect(self, frame):
-        """Dodaje efekt cienia do ramki"""
-        shadow_frame = ttk.Frame(frame.master)
-        shadow_frame.place(x=frame.winfo_x() + 3, y=frame.winfo_y() + 3, 
-                          width=frame.winfo_width(), height=frame.winfo_height())
-        shadow_frame.lower(frame)
-        frame.update()
+    def create_interface(self):
+        """Create the main interface"""
+        # Main container
+        main_frame = ttk.Frame(self.root)
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        main_frame.grid_rowconfigure(1, weight=1)
+        main_frame.grid_columnconfigure(1, weight=1)
         
-    def setup_control_panel(self, parent):
-        """Konfiguracja panelu kontrolek"""
-        # Wewnętrzny kontener dla odstępu
-        inner_frame = ttk.Frame(parent, style="Panel.TFrame", padding=15)
-        inner_frame.pack(fill=tk.BOTH, expand=True)
+        # Header
+        self.create_header(main_frame)
         
-        # Tytuł panelu
-        panel_label = ttk.Label(inner_frame, 
-                               text="Parametry analizy", 
-                               style="Panel.TLabel",
-                               font=("Arial", 14, "bold"))
-        panel_label.pack(anchor="w", pady=(0, 15))
+        # Content area
+        content_frame = ttk.Frame(main_frame)
+        content_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(10, 0))
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(1, weight=1)
         
-        # Sekcja wyboru profilu
-        profile_frame = ttk.LabelFrame(inner_frame, 
-                                      text="Wybór profilu", 
-                                      style="Panel.TLabelframe",
-                                      padding=15)
-        profile_frame.pack(fill=tk.X, pady=(0, 15))
+        # Left panel (controls)
+        self.create_control_panel(content_frame)
         
-        ttk.Label(profile_frame, 
-                 text="Profil NACA:", 
-                 style="Panel.TLabel").pack(anchor="w")
+        # Right panel (chart)
+        self.create_chart_panel(content_frame)
+    
+    def create_header(self, parent):
+        """Create header section"""
+        header_frame = ttk.Frame(parent, style="Header.TFrame")
+        header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         
-        profile_combo = ttk.Combobox(profile_frame, 
-                                    textvariable=self.selected_profile,
-                                    values=list(naca_data.keys()),
-                                    state="readonly",
-                                    width=25)
-        profile_combo.pack(fill=tk.X, pady=(5, 0))
-        profile_combo.current(0)  # Domyślnie wybierz pierwszy profil
+        ttk.Label(header_frame, text="Analiza aerodynamiczna profilu skrzydła", 
+                 style="Header.TLabel").pack(pady=15)
+    
+    def create_control_panel(self, parent):
+        """Create left control panel"""
+        # Main control frame with fixed width to prevent layout issues
+        control_frame = ttk.Frame(parent, style="Surface.TFrame", padding=15, width=300)
+        control_frame.grid(row=0, column=0, sticky="ns", padx=(0, 10))
+        control_frame.grid_propagate(False)  # Prevent frame from shrinking
         
-        # Sekcja parametrów
-        params_frame = ttk.LabelFrame(inner_frame, 
-                                     text="Parametry lotu", 
-                                     style="Panel.TLabelframe",
-                                     padding=15)
-        params_frame.pack(fill=tk.X, pady=(0, 15))
+        # Panel title
+        ttk.Label(control_frame, text="Parametry analizy", 
+                 style="Surface.TLabel", font=("Arial", 14, "bold")).pack(anchor="w", pady=(0, 15))
         
-        # Kąt natarcia
-        ttk.Label(params_frame, 
-                 text="Kąt natarcia [°]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        angle_entry = ttk.Entry(params_frame, textvariable=self.angle_of_attack)
-        angle_entry.pack(fill=tk.X, pady=(5, 15))
+        # Profile selection
+        profile_frame = ttk.LabelFrame(control_frame, text="Wybór profilu", 
+                                     style="Surface.TLabelframe", padding=10)
+        profile_frame.pack(fill="x", pady=(0, 15))
         
-        # Prędkość powietrza
-        ttk.Label(params_frame, 
-                 text="Prędkość powietrza [m/s]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        speed_entry = ttk.Entry(params_frame, textvariable=self.air_speed)
-        speed_entry.pack(fill=tk.X, pady=(5, 15))
+        ttk.Label(profile_frame, text="Profil NACA:", 
+                 style="Surface.TLabel").pack(anchor="w", pady=(0, 5))
+        profile_combo = ttk.Combobox(profile_frame, textvariable=self.selected_profile,
+                                   values=list(naca_data.keys()), state="readonly")
+        profile_combo.pack(fill="x")
         
-        # Gęstość powietrza
-        ttk.Label(params_frame, 
-                 text="Gęstość powietrza [kg/m³]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        density_entry = ttk.Entry(params_frame, textvariable=self.air_density)
-        density_entry.pack(fill=tk.X, pady=(5, 15))
+        # Flight parameters
+        params_frame = ttk.LabelFrame(control_frame, text="Parametry lotu", 
+                                    style="Surface.TLabelframe", padding=10)
+        params_frame.pack(fill="x", pady=(0, 15))
         
-        # Powierzchnia skrzydła
-        ttk.Label(params_frame, 
-                 text="Powierzchnia skrzydła [m²]:", 
-                 style="Panel.TLabel").pack(anchor="w")
-        area_entry = ttk.Entry(params_frame, textvariable=self.wing_area)
-        area_entry.pack(fill=tk.X, pady=(5, 0))
+        # Create parameter inputs with consistent spacing
+        self.create_parameter_input(params_frame, "Kąt natarcia [°]:", self.angle_of_attack)
+        self.create_parameter_input(params_frame, "Prędkość [m/s]:", self.air_speed)
+        self.create_parameter_input(params_frame, "Gęstość powietrza [kg/m³]:", self.air_density)
+        self.create_parameter_input(params_frame, "Powierzchnia skrzydła [m²]:", self.wing_area)
         
-        # Przycisk "Oblicz"
-        calculate_button = ttk.Button(inner_frame, 
-                                 text="OBLICZ", 
-                                 command=self.calculate,
-                                 style="Custom.TButton",
-                                 width=25)
-        calculate_button.pack(pady=(15, 0))
+        # Calculate button with explicit styling
+        calculate_btn = ttk.Button(control_frame, text="OBLICZ", 
+                                 command=self.calculate, style="Calculate.TButton")
+        calculate_btn.pack(fill="x", pady=(15, 15))
         
-        # Przyciski eksportu
-        export_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
-        export_frame.pack(fill=tk.X, pady=(15, 0))
+        # Export buttons frame
+        export_frame = ttk.Frame(control_frame, style="Surface.TFrame")
+        export_frame.pack(fill="x")
         
-        export_data_btn = ttk.Button(export_frame, 
-                                   text="Eksportuj dane", 
-                                   command=self.export_data,
-                                   width=12)
-        export_data_btn.pack(side=tk.LEFT, padx=(0, 5))
+        # Export buttons with consistent sizing
+        ttk.Button(export_frame, text="Eksportuj dane", 
+                  command=self.export_data, width=12).pack(side="left", padx=(0, 5))
+        ttk.Button(export_frame, text="Zapisz wykres", 
+                  command=self.save_plot, width=12).pack(side="left")
+    
+    def create_parameter_input(self, parent, label_text, variable):
+        """Create a labeled input field with consistent spacing"""
+        ttk.Label(parent, text=label_text, style="Surface.TLabel").pack(anchor="w", pady=(0, 3))
+        entry = ttk.Entry(parent, textvariable=variable)
+        entry.pack(fill="x", pady=(0, 10))
+        return entry
+    
+    def create_chart_panel(self, parent):
+        """Create right chart panel"""
+        chart_frame = ttk.Frame(parent, style="Surface.TFrame", padding=20)
+        chart_frame.grid(row=0, column=1, sticky="nsew")
+        chart_frame.grid_rowconfigure(1, weight=1)
+        chart_frame.grid_columnconfigure(0, weight=1)
         
-        save_plot_btn = ttk.Button(export_frame, 
-                                  text="Zapisz wykres", 
-                                  command=self.save_plot,
-                                  width=12)
-        save_plot_btn.pack(side=tk.LEFT)
-
-    def setup_chart_panel(self, parent):
-        """Konfiguracja panelu z wykresem"""
-        # Wewnętrzny kontener dla odstępu
-        inner_frame = ttk.Frame(parent, style="Panel.TFrame", padding=15)
-        inner_frame.pack(fill=tk.BOTH, expand=True)
+        # Panel title
+        ttk.Label(chart_frame, text="Wizualizacja danych", 
+                 style="Surface.TLabel", font=("Arial", 14, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 15))
         
-        # Tytuł panelu
-        panel_label = ttk.Label(inner_frame, 
-                               text="Wizualizacja danych", 
-                               style="Panel.TLabel",
-                               font=("Arial", 14, "bold"))
-        panel_label.pack(anchor="w", pady=(0, 15))
+        # Chart container
+        plot_frame = ttk.Frame(chart_frame, style="Surface.TFrame")
+        plot_frame.grid(row=1, column=0, sticky="nsew")
         
-        # Ramka na wykres
-        chart_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
-        chart_frame.pack(fill=tk.BOTH, expand=True)
+        # Initialize matplotlib figure
+        self.setup_chart(plot_frame)
         
-        # Inicjalizacja wykresu w stylu granatowym
-        self.figure = Figure(figsize=(5, 4), dpi=100, facecolor='white')
+        # Commented out toolbar for now (can be restored later)
+        # toolbar_frame = ttk.Frame(chart_frame, style="Surface.TFrame")
+        # toolbar_frame.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        # from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+        # self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        # self.toolbar.update()
+        
+        # Info label
+        info_label = ttk.Label(chart_frame, 
+                              text="Wybierz profil i parametry, następnie kliknij 'OBLICZ'.", 
+                              style="Surface.TLabel", foreground=self.colors["text_light"],
+                              font=("Arial", 10, "italic"))
+        info_label.grid(row=3, column=0, sticky="w", pady=(15, 0))
+    
+    def setup_chart(self, parent):
+        """Initialize the matplotlib chart"""
+        self.figure = Figure(figsize=(6, 4), dpi=100, facecolor=self.colors["surface"])
         self.plot = self.figure.add_subplot(111)
-        self.plot.set_title("Dane aerodynamiczne profilu", fontsize=12, color=self.colors["dark_navy"])
+        
+        # Configure plot appearance
+        self.plot.set_title("Dane aerodynamiczne profilu", 
+                           fontsize=12, color=self.colors["primary"], pad=20)
         self.plot.set_xlabel("Kąt natarcia [°]", fontsize=10, color=self.colors["text"])
         self.plot.set_ylabel("Współczynnik", fontsize=10, color=self.colors["text"])
-        self.plot.grid(True, linestyle='--', alpha=0.7)
-        self.plot.tick_params(colors=self.colors["text"])
+        self.plot.grid(True, linestyle='--', alpha=0.3)
+        self.plot.set_facecolor('#FAFBFC')
         
-        # Dostosowanie kolorów wykresu
-        self.figure.patch.set_facecolor('white')
-        self.plot.set_facecolor('#F8FBFF')  # Bardzo jasny odcień niebieskiego
+        # Create sample plot
+        sample_angles = [-10, -5, 0, 5, 10, 15, 20]
+        sample_cl = [-0.6, -0.1, 0.4, 0.9, 1.3, 1.5, 1.2]
+        sample_cd = [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12]
         
-        # Utworzenie przykładowego wykresu
-        self.plot.plot([-10, -5, 0, 5, 10, 15, 20], 
-                      [-0.6, -0.1, 0.4, 0.9, 1.3, 1.5, 1.2], 
-                      marker='o', color=self.colors["medium_navy"], 
-                      label="CL (przykład)")
-        self.plot.plot([-10, -5, 0, 5, 10, 15, 20], 
-                      [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12], 
-                      marker='s', color=self.colors["light_navy"], 
-                      label="CD (przykład)")
+        self.plot.plot(sample_angles, sample_cl, 'o-', color=self.colors["primary"], 
+                      label="CL (przykład)", linewidth=2, markersize=6)
+        self.plot.plot(sample_angles, sample_cd, 's-', color=self.colors["secondary"], 
+                      label="CD (przykład)", linewidth=2, markersize=6)
         self.plot.legend()
         
-        self.canvas = FigureCanvasTkAgg(self.figure, chart_frame)
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-        
-        # Dodanie toolbar'a Matplotlib
-        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-        toolbar_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
-        toolbar_frame.pack(fill=tk.X, pady=(5, 15))
-        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
-        self.toolbar.update()
-        
-        # Panel informacyjny pod wykresem
-        info_frame = ttk.Frame(inner_frame, style="Panel.TFrame")
-        info_frame.pack(fill=tk.X, pady=(0, 0))
-        
-        info_label = ttk.Label(info_frame, 
-                              text="Wybierz profil i parametry, a następnie kliknij 'OBLICZ' aby zobaczyć wyniki.", 
-                              style="Panel.TLabel",
-                              foreground=self.colors["medium_navy"],
-                              font=("Arial", 10, "italic"))
-        info_label.pack(anchor="w")
-        
+        # Create canvas
+        self.canvas = FigureCanvasTkAgg(self.figure, parent)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
+    
     def validate_inputs(self):
-        """Validate user inputs before calculations"""
+        """Validate user inputs"""
         try:
             angle = self.angle_of_attack.get()
             speed = self.air_speed.get()
             density = self.air_density.get()
             area = self.wing_area.get()
             
-            # Check for valid ranges
             if not (-20 <= angle <= 30):
-                return False, "Kąt natarcia powinien być w zakresie od -20° do 30°"
+                return False, "Kąt natarcia: -20° do 30°"
             if speed <= 0:
-                return False, "Prędkość powietrza musi być większa niż zero"
+                return False, "Prędkość musi być > 0"
             if density <= 0:
-                return False, "Gęstość powietrza musi być większa niż zero"
+                return False, "Gęstość musi być > 0"
             if area <= 0:
-                return False, "Powierzchnia skrzydła musi być większa niż zero"
+                return False, "Powierzchnia musi być > 0"
                 
             return True, ""
         except tk.TclError:
             return False, "Wprowadź poprawne wartości liczbowe"
-            
+    
     def calculate(self):
-        """Metoda wywoływana po kliknięciu przycisku 'Oblicz'"""
-        # Walidacja danych wejściowych
+        """Perform aerodynamic calculations"""
+        # Validate inputs
         valid, error_msg = self.validate_inputs()
         if not valid:
             messagebox.showerror("Błąd", error_msg)
             return
-            
+        
+        # Get parameters
         profile = self.selected_profile.get()
         angle = self.angle_of_attack.get()
         speed = self.air_speed.get()
         density = self.air_density.get()
         area = self.wing_area.get()
-        chord = self.chord_length.get()
-        viscosity = self.kinematic_viscosity.get()
         
-        # Use the aerodynamic calculations module
-        results = aero_calculations.analyze_airfoil(
-            alpha=angle,
-            V=speed,
-            rho=density,
-            S=area,
-            profile_name=profile,
-            profiles_data=naca_data
-        )
-        
-        # Store results for possible export
-        self.last_results = results
-        
-        # Print results to console (optional)
-        print(f"Analiza dla profilu: {results['profile']}")
-        print(f"Siła nośna: {results['lift']:.2f} N")
-        print(f"Opór: {results['drag']:.2f} N")
-        print(f"Współczynnik L/D: {results['L_D_ratio']:.2f}")
- 
-        
-        # Aktualizacja wykresu z danymi wybranego profilu i wynikami
-        self.update_plot(profile, results)
+        try:
+            # Perform analysis
+            results = aero_calculations.analyze_airfoil(
+                alpha=angle, V=speed, rho=density, S=area,
+                profile_name=profile, profiles_data=naca_data
+            )
+            
+            # Store results
+            self.last_results = results
+            
+            # Update plot
+            self.update_plot(profile, results)
+            
+            print(f"Analiza: {results['profile']}")
+            print(f"Siła nośna: {results['lift']:.2f} N")
+            print(f"Opór: {results['drag']:.2f} N")
+            print(f"L/D: {results['L_D_ratio']:.2f}")
+            
+        except Exception as e:
+            messagebox.showerror("Błąd obliczeń", str(e))
     
     def update_plot(self, profile, results=None):
-        """Aktualizuje wykres danymi wybranego profilu i wynikami obliczeń"""
-        # Czyszczenie wykresu
+        """Update plot with profile data and results"""
         self.plot.clear()
         
-        # Konfiguracja wykresu
-        self.plot.set_title(f"Profil: {profile}", fontsize=12, color=self.colors["dark_navy"])
+        # Configure plot
+        self.plot.set_title(f"Profil: {profile}", 
+                           fontsize=12, color=self.colors["primary"], pad=20)
         self.plot.set_xlabel("Kąt natarcia [°]", fontsize=10, color=self.colors["text"])
         self.plot.set_ylabel("Współczynnik", fontsize=10, color=self.colors["text"])
-        self.plot.grid(True, linestyle='--', alpha=0.7)
-        self.plot.set_facecolor('#F8FBFF')
+        self.plot.grid(True, linestyle='--', alpha=0.3)
+        self.plot.set_facecolor('#FAFBFC')
         
-        # Pobieranie danych wybranego profilu
+        # Plot profile data
         profile_data = naca_data[profile]
+        self.plot.plot(profile_data["alpha"], profile_data["CL"], 'o-', 
+                      color=self.colors["primary"], label="CL", linewidth=2, markersize=6)
+        self.plot.plot(profile_data["alpha"], profile_data["CD"], 's-', 
+                      color=self.colors["secondary"], label="CD", linewidth=2, markersize=6)
         
-        # Rysowanie danych
-        self.plot.plot(profile_data["alpha"], profile_data["CL"], 
-                    marker='o', color=self.colors["medium_navy"], 
-                    label="CL", linewidth=2)
-        self.plot.plot(profile_data["alpha"], profile_data["CD"], 
-                    marker='s', color=self.colors["light_navy"], 
-                    label="CD", linewidth=2)
-        
-        # Zapisanie danych do użycia w tooltipach
-        self.plot_data = {
-            'x': profile_data["alpha"],
-            'cl': profile_data["CL"],
-            'cd': profile_data["CD"]
-        }
-        
-        # Jeśli mamy wyniki obliczeń, zaznaczamy aktualny punkt na wykresie
+        # Highlight current point if results available
         if results:
-            # Zaznaczenie aktualnego punktu dla CL
             self.plot.scatter([results["alpha"]], [results["CL"]], 
-                            s=100, color='red', marker='o', 
+                            s=120, color='red', marker='o', zorder=5,
                             label=f"CL={results['CL']:.3f}")
-            
-            # Zaznaczenie aktualnego punktu dla CD
             self.plot.scatter([results["alpha"]], [results["CD"]], 
-                            s=100, color='red', marker='s', 
+                            s=120, color='red', marker='s', zorder=5,
                             label=f"CD={results['CD']:.3f}")
             
-            # Dodanie informacji o siłach i stosunku L/D na wykresie
-            info_text = f"Siła nośna: {results['lift']:.1f} N\n"
-            info_text += f"Opór: {results['drag']:.1f} N\n"
-            info_text += f"L/D: {results['L_D_ratio']:.2f}\n"
-  
+            # Add results text
+            info_text = (f"Siła nośna: {results['lift']:.1f} N\n"
+                        f"Opór: {results['drag']:.1f} N\n"
+                        f"L/D: {results['L_D_ratio']:.2f}")
             
-            # Dodanie tekstowych informacji w rogu wykresu
-            self.plot.text(0.02, 0.98, info_text,
-                        transform=self.plot.transAxes,
-                        fontsize=9,
-                        verticalalignment='top',
-                        bbox=dict(boxstyle='round', 
-                                  facecolor='white', 
-                                  alpha=0.8))
+            self.plot.text(0.02, 0.98, info_text, transform=self.plot.transAxes,
+                          fontsize=9, verticalalignment='top',
+                          bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
         
-        # Dodanie legendy
         self.plot.legend()
-        
-        # Odświeżenie wykresu
         self.canvas.draw()
-        
+    
     def export_data(self):
-        """Export calculation results to CSV file"""
+        """Export results to CSV"""
+        if not hasattr(self, 'last_results'):
+            messagebox.showinfo("Info", "Brak danych. Wykonaj obliczenia.")
+            return
+        
         from tkinter import filedialog
         import csv
         
-        if not hasattr(self, 'last_results'):
-            messagebox.showinfo("Informacja", "Brak danych do eksportu. Wykonaj najpierw obliczenia.")
-            return
-            
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            title="Zapisz dane jako CSV"
-        )
+            defaultextension=".csv", filetypes=[("CSV files", "*.csv")],
+            title="Zapisz dane jako CSV")
         
         if not file_path:
             return
-            
-        try:
-            with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(["Parametr", "Wartość", "Jednostka"])
-                writer.writerow(["Profil", self.last_results['profile'], ""])
-                writer.writerow(["Kąt natarcia", self.last_results['alpha'], "°"])
-                writer.writerow(["Prędkość powietrza", self.air_speed.get(), "m/s"])
-                writer.writerow(["Gęstość powietrza", self.air_density.get(), "kg/m³"])
-                writer.writerow(["Powierzchnia skrzydła", self.wing_area.get(), "m²"])
-                writer.writerow(["Współczynnik siły nośnej (CL)", self.last_results['CL'], ""])
-                writer.writerow(["Współczynnik oporu (CD)", self.last_results['CD'], ""])
-                writer.writerow(["Siła nośna", self.last_results['lift'], "N"])
-                writer.writerow(["Opór", self.last_results['drag'], "N"])
-                writer.writerow(["Współczynnik L/D", self.last_results['L_D_ratio'], ""])
-
-                
-            messagebox.showinfo("Sukces", f"Dane zostały zapisane do pliku:\n{file_path}")
-        except Exception as e:
-            messagebox.showerror("Błąd", f"Błąd podczas zapisu pliku:\n{str(e)}")
         
+        try:
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(["Parametr", "Wartość", "Jednostka"])
+                results = self.last_results
+                writer.writerows([
+                    ["Profil", results['profile'], ""],
+                    ["Kąt natarcia", results['alpha'], "°"],
+                    ["Prędkość", self.air_speed.get(), "m/s"],
+                    ["Gęstość", self.air_density.get(), "kg/m³"],
+                    ["Powierzchnia", self.wing_area.get(), "m²"],
+                    ["CL", results['CL'], ""],
+                    ["CD", results['CD'], ""],
+                    ["Siła nośna", results['lift'], "N"],
+                    ["Opór", results['drag'], "N"],
+                    ["L/D", results['L_D_ratio'], ""]
+                ])
+            messagebox.showinfo("Sukces", f"Zapisano: {file_path}")
+        except Exception as e:
+            messagebox.showerror("Błąd", f"Błąd zapisu: {e}")
+    
     def save_plot(self):
-        """Save current plot as image file"""
+        """Save current plot as image"""
         from tkinter import filedialog
         
         file_path = filedialog.asksaveasfilename(
-            defaultextension=".png",
-            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("PDF files", "*.pdf"), ("All files", "*.*")],
-            title="Zapisz wykres jako obrazek"
-        )
+            defaultextension=".png", 
+            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("PDF files", "*.pdf")],
+            title="Zapisz wykres")
         
         if not file_path:
             return
-            
+        
         try:
             self.figure.savefig(file_path, dpi=300, bbox_inches='tight')
-            messagebox.showinfo("Sukces", f"Wykres został zapisany do pliku:\n{file_path}")
+            messagebox.showinfo("Sukces", f"Zapisano: {file_path}")
         except Exception as e:
-            messagebox.showerror("Błąd", f"Błąd podczas zapisu wykresu:\n{str(e)}")
+            messagebox.showerror("Błąd", f"Błąd zapisu: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
