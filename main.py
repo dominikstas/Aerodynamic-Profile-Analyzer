@@ -23,7 +23,7 @@ naca_data = {
 class Airfoil:
     def __init__(self, root):
         self.root = root
-        self.root.title("Analiza aerodynamiczna profilu skrzydła")
+        self.root.title("Airfoil Aerodynamic Analysis")
         
         # Responsive window sizing
         self.setup_window()
@@ -106,17 +106,20 @@ class Airfoil:
         style.configure("Header.TLabel", background=self.colors["primary"], 
                        foreground="white", font=("Arial", 16, "bold"))
         
-        # Button styles - Simplified and more reliable
+        # Button styles - smaller and more compact
         style.configure("Calculate.TButton", 
-                       font=("Arial", 12, "bold"),
-                       padding=(10, 8),
-                       width=20)
+                       font=("Arial", 10, "bold"),
+                       padding=(8, 5))
         
-        # Input styles
+        style.configure("Reset.TButton", 
+                       font=("Arial", 9),
+                       padding=(6, 4))
+        
+        # Input styles - smaller
         style.configure("TEntry", fieldbackground="white", 
-                       foreground=self.colors["text"], padding=5)
+                       foreground=self.colors["text"], padding=3)
         style.configure("TCombobox", fieldbackground="white", 
-                       foreground=self.colors["text"], padding=5)
+                       foreground=self.colors["text"], padding=3)
     
     def create_interface(self):
         """Create the main interface"""
@@ -146,62 +149,63 @@ class Airfoil:
         header_frame = ttk.Frame(parent, style="Header.TFrame")
         header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         
-        ttk.Label(header_frame, text="Analiza aerodynamiczna profilu skrzydła", 
+        ttk.Label(header_frame, text="Airfoil Aerodynamic Analysis", 
                  style="Header.TLabel").pack(pady=15)
     
     def create_control_panel(self, parent):
         """Create left control panel"""
-        # Main control frame with fixed width to prevent layout issues
-        control_frame = ttk.Frame(parent, style="Surface.TFrame", padding=15, width=300)
+        # Main control frame with smaller width and compact design
+        control_frame = ttk.Frame(parent, style="Surface.TFrame", padding=12, width=260)
         control_frame.grid(row=0, column=0, sticky="ns", padx=(0, 10))
         control_frame.grid_propagate(False)  # Prevent frame from shrinking
         
-        # Panel title
-        ttk.Label(control_frame, text="Parametry analizy", 
-                 style="Surface.TLabel", font=("Arial", 14, "bold")).pack(anchor="w", pady=(0, 15))
+        # Panel title - smaller font
+        title_label = ttk.Label(control_frame, text="Analysis Parameters", 
+                               style="Surface.TLabel", font=("Arial", 12, "bold"))
+        title_label.pack(anchor="w", pady=(0, 10))
         
-        # Profile selection
-        profile_frame = ttk.LabelFrame(control_frame, text="Wybór profilu", 
-                                     style="Surface.TLabelframe", padding=10)
-        profile_frame.pack(fill="x", pady=(0, 15))
+        # Profile selection - more compact
+        profile_frame = ttk.LabelFrame(control_frame, text="Profile Selection", 
+                                     style="Surface.TLabelframe", padding=8)
+        profile_frame.pack(fill="x", pady=(0, 10))
         
-        ttk.Label(profile_frame, text="Profil NACA:", 
-                 style="Surface.TLabel").pack(anchor="w", pady=(0, 5))
+        ttk.Label(profile_frame, text="NACA Profile:", 
+                 style="Surface.TLabel", font=("Arial", 9)).pack(anchor="w", pady=(0, 3))
         profile_combo = ttk.Combobox(profile_frame, textvariable=self.selected_profile,
-                                   values=list(naca_data.keys()), state="readonly")
+                                   values=list(naca_data.keys()), state="readonly", font=("Arial", 9))
         profile_combo.pack(fill="x")
         
-        # Flight parameters
-        params_frame = ttk.LabelFrame(control_frame, text="Parametry lotu", 
-                                    style="Surface.TLabelframe", padding=10)
-        params_frame.pack(fill="x", pady=(0, 15))
+        # Flight parameters - more compact
+        params_frame = ttk.LabelFrame(control_frame, text="Flight Parameters", 
+                                    style="Surface.TLabelframe", padding=8)
+        params_frame.pack(fill="x", pady=(0, 10))
         
-        # Create parameter inputs with consistent spacing
-        self.create_parameter_input(params_frame, "Kąt natarcia [°]:", self.angle_of_attack)
-        self.create_parameter_input(params_frame, "Prędkość [m/s]:", self.air_speed)
-        self.create_parameter_input(params_frame, "Gęstość powietrza [kg/m³]:", self.air_density)
-        self.create_parameter_input(params_frame, "Powierzchnia skrzydła [m²]:", self.wing_area)
+        # Create parameter inputs with smaller spacing
+        self.create_parameter_input(params_frame, "Angle of Attack [°]:", self.angle_of_attack)
+        self.create_parameter_input(params_frame, "Airspeed [m/s]:", self.air_speed)
+        self.create_parameter_input(params_frame, "Air Density [kg/m³]:", self.air_density)
+        self.create_parameter_input(params_frame, "Wing Area [m²]:", self.wing_area)
         
-        # Calculate button with explicit styling
-        calculate_btn = ttk.Button(control_frame, text="OBLICZ", 
+        # Buttons frame - compact design
+        buttons_frame = ttk.Frame(control_frame, style="Surface.TFrame")
+        buttons_frame.pack(fill="x", pady=(10, 0))
+        
+        # Calculate button - smaller
+        calculate_btn = ttk.Button(buttons_frame, text="CALCULATE", 
                                  command=self.calculate, style="Calculate.TButton")
-        calculate_btn.pack(fill="x", pady=(15, 15))
+        calculate_btn.pack(fill="x", pady=(0, 5))
         
-        # Export buttons frame
-        export_frame = ttk.Frame(control_frame, style="Surface.TFrame")
-        export_frame.pack(fill="x")
-        
-        # Export buttons with consistent sizing
-        ttk.Button(export_frame, text="Eksportuj dane", 
-                  command=self.export_data, width=12).pack(side="left", padx=(0, 5))
-        ttk.Button(export_frame, text="Zapisz wykres", 
-                  command=self.save_plot, width=12).pack(side="left")
+        # Reset button - smaller
+        reset_btn = ttk.Button(buttons_frame, text="RESET", 
+                              command=self.reset_data, style="Reset.TButton")
+        reset_btn.pack(fill="x")
     
     def create_parameter_input(self, parent, label_text, variable):
-        """Create a labeled input field with consistent spacing"""
-        ttk.Label(parent, text=label_text, style="Surface.TLabel").pack(anchor="w", pady=(0, 3))
-        entry = ttk.Entry(parent, textvariable=variable)
-        entry.pack(fill="x", pady=(0, 10))
+        """Create a labeled input field with compact spacing"""
+        ttk.Label(parent, text=label_text, style="Surface.TLabel", 
+                 font=("Arial", 9)).pack(anchor="w", pady=(0, 2))
+        entry = ttk.Entry(parent, textvariable=variable, font=("Arial", 9))
+        entry.pack(fill="x", pady=(0, 6))
         return entry
     
     def create_chart_panel(self, parent):
@@ -212,7 +216,7 @@ class Airfoil:
         chart_frame.grid_columnconfigure(0, weight=1)
         
         # Panel title
-        ttk.Label(chart_frame, text="Wizualizacja danych", 
+        ttk.Label(chart_frame, text="Data Visualization", 
                  style="Surface.TLabel", font=("Arial", 14, "bold")).grid(row=0, column=0, sticky="w", pady=(0, 15))
         
         # Chart container
@@ -222,16 +226,9 @@ class Airfoil:
         # Initialize matplotlib figure
         self.setup_chart(plot_frame)
         
-        # Commented out toolbar for now (can be restored later)
-        # toolbar_frame = ttk.Frame(chart_frame, style="Surface.TFrame")
-        # toolbar_frame.grid(row=2, column=0, sticky="ew", pady=(10, 0))
-        # from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
-        # self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
-        # self.toolbar.update()
-        
         # Info label
         info_label = ttk.Label(chart_frame, 
-                              text="Wybierz profil i parametry, następnie kliknij 'OBLICZ'.", 
+                              text="Select profile and parameters, then click 'CALCULATE'.", 
                               style="Surface.TLabel", foreground=self.colors["text_light"],
                               font=("Arial", 10, "italic"))
         info_label.grid(row=3, column=0, sticky="w", pady=(15, 0))
@@ -242,10 +239,10 @@ class Airfoil:
         self.plot = self.figure.add_subplot(111)
         
         # Configure plot appearance
-        self.plot.set_title("Dane aerodynamiczne profilu", 
+        self.plot.set_title("Airfoil Aerodynamic Data", 
                            fontsize=12, color=self.colors["primary"], pad=20)
-        self.plot.set_xlabel("Kąt natarcia [°]", fontsize=10, color=self.colors["text"])
-        self.plot.set_ylabel("Współczynnik", fontsize=10, color=self.colors["text"])
+        self.plot.set_xlabel("Angle of Attack [°]", fontsize=10, color=self.colors["text"])
+        self.plot.set_ylabel("Coefficient", fontsize=10, color=self.colors["text"])
         self.plot.grid(True, linestyle='--', alpha=0.3)
         self.plot.set_facecolor('#FAFBFC')
         
@@ -255,9 +252,9 @@ class Airfoil:
         sample_cd = [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12]
         
         self.plot.plot(sample_angles, sample_cl, 'o-', color=self.colors["primary"], 
-                      label="CL (przykład)", linewidth=2, markersize=6)
+                      label="CL (example)", linewidth=2, markersize=6)
         self.plot.plot(sample_angles, sample_cd, 's-', color=self.colors["secondary"], 
-                      label="CD (przykład)", linewidth=2, markersize=6)
+                      label="CD (example)", linewidth=2, markersize=6)
         self.plot.legend()
         
         # Create canvas
@@ -273,24 +270,24 @@ class Airfoil:
             area = self.wing_area.get()
             
             if not (-20 <= angle <= 30):
-                return False, "Kąt natarcia: -20° do 30°"
+                return False, "Angle of attack: -20° to 30°"
             if speed <= 0:
-                return False, "Prędkość musi być > 0"
+                return False, "Airspeed must be > 0"
             if density <= 0:
-                return False, "Gęstość musi być > 0"
+                return False, "Air density must be > 0"
             if area <= 0:
-                return False, "Powierzchnia musi być > 0"
+                return False, "Wing area must be > 0"
                 
             return True, ""
         except tk.TclError:
-            return False, "Wprowadź poprawne wartości liczbowe"
+            return False, "Please enter valid numerical values"
     
     def calculate(self):
         """Perform aerodynamic calculations"""
         # Validate inputs
         valid, error_msg = self.validate_inputs()
         if not valid:
-            messagebox.showerror("Błąd", error_msg)
+            messagebox.showerror("Error", error_msg)
             return
         
         # Get parameters
@@ -313,23 +310,68 @@ class Airfoil:
             # Update plot
             self.update_plot(profile, results)
             
-            print(f"Analiza: {results['profile']}")
-            print(f"Siła nośna: {results['lift']:.2f} N")
-            print(f"Opór: {results['drag']:.2f} N")
-            print(f"L/D: {results['L_D_ratio']:.2f}")
+            print(f"Analysis: {results['profile']}")
+            print(f"Lift force: {results['lift']:.2f} N")
+            print(f"Drag force: {results['drag']:.2f} N")
+            print(f"L/D ratio: {results['L_D_ratio']:.2f}")
             
         except Exception as e:
-            messagebox.showerror("Błąd obliczeń", str(e))
+            messagebox.showerror("Calculation Error", str(e))
+    
+    def reset_data(self):
+        """Reset all input fields to default values"""
+        # Reset variables to default values
+        self.selected_profile.set(list(naca_data.keys())[0])
+        self.angle_of_attack.set(0.0)
+        self.air_speed.set(20.0)
+        self.air_density.set(1.225)
+        self.wing_area.set(10.0)
+        self.chord_length.set(1.0)
+        self.kinematic_viscosity.set(1.48e-5)
+        
+        # Clear stored results
+        if hasattr(self, 'last_results'):
+            delattr(self, 'last_results')
+        
+        # Reset plot to initial state
+        self.reset_plot()
+        
+        messagebox.showinfo("Reset", "All parameters have been reset to default values.")
+    
+    def reset_plot(self):
+        """Reset plot to initial sample data"""
+        self.plot.clear()
+        
+        # Configure plot
+        self.plot.set_title("Airfoil Aerodynamic Data", 
+                           fontsize=12, color=self.colors["primary"], pad=20)
+        self.plot.set_xlabel("Angle of Attack [°]", fontsize=10, color=self.colors["text"])
+        self.plot.set_ylabel("Coefficient", fontsize=10, color=self.colors["text"])
+        self.plot.grid(True, linestyle='--', alpha=0.3)
+        self.plot.set_facecolor('#FAFBFC')
+        
+        # Create sample plot
+        sample_angles = [-10, -5, 0, 5, 10, 15, 20]
+        sample_cl = [-0.6, -0.1, 0.4, 0.9, 1.3, 1.5, 1.2]
+        sample_cd = [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12]
+        
+        self.plot.plot(sample_angles, sample_cl, 'o-', color=self.colors["primary"], 
+                      label="CL (example)", linewidth=2, markersize=6)
+        self.plot.plot(sample_angles, sample_cd, 's-', color=self.colors["secondary"], 
+                      label="CD (example)", linewidth=2, markersize=6)
+        self.plot.legend()
+        
+        self.canvas.draw()
     
     def update_plot(self, profile, results=None):
         """Update plot with profile data and results"""
         self.plot.clear()
         
         # Configure plot
-        self.plot.set_title(f"Profil: {profile}", 
+        self.plot.set_title(f"Profile: {profile}", 
                            fontsize=12, color=self.colors["primary"], pad=20)
-        self.plot.set_xlabel("Kąt natarcia [°]", fontsize=10, color=self.colors["text"])
-        self.plot.set_ylabel("Współczynnik", fontsize=10, color=self.colors["text"])
+        self.plot.set_xlabel("Angle of Attack [°]", fontsize=10, color=self.colors["text"])
+        self.plot.set_ylabel("Coefficient", fontsize=10, color=self.colors["text"])
         self.plot.grid(True, linestyle='--', alpha=0.3)
         self.plot.set_facecolor('#FAFBFC')
         
@@ -350,9 +392,9 @@ class Airfoil:
                             label=f"CD={results['CD']:.3f}")
             
             # Add results text
-            info_text = (f"Siła nośna: {results['lift']:.1f} N\n"
-                        f"Opór: {results['drag']:.1f} N\n"
-                        f"L/D: {results['L_D_ratio']:.2f}")
+            info_text = (f"Lift Force: {results['lift']:.1f} N\n"
+                        f"Drag Force: {results['drag']:.1f} N\n"
+                        f"L/D Ratio: {results['L_D_ratio']:.2f}")
             
             self.plot.text(0.02, 0.98, info_text, transform=self.plot.transAxes,
                           fontsize=9, verticalalignment='top',
@@ -360,61 +402,6 @@ class Airfoil:
         
         self.plot.legend()
         self.canvas.draw()
-    
-    def export_data(self):
-        """Export results to CSV"""
-        if not hasattr(self, 'last_results'):
-            messagebox.showinfo("Info", "Brak danych. Wykonaj obliczenia.")
-            return
-        
-        from tkinter import filedialog
-        import csv
-        
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv", filetypes=[("CSV files", "*.csv")],
-            title="Zapisz dane jako CSV")
-        
-        if not file_path:
-            return
-        
-        try:
-            with open(file_path, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow(["Parametr", "Wartość", "Jednostka"])
-                results = self.last_results
-                writer.writerows([
-                    ["Profil", results['profile'], ""],
-                    ["Kąt natarcia", results['alpha'], "°"],
-                    ["Prędkość", self.air_speed.get(), "m/s"],
-                    ["Gęstość", self.air_density.get(), "kg/m³"],
-                    ["Powierzchnia", self.wing_area.get(), "m²"],
-                    ["CL", results['CL'], ""],
-                    ["CD", results['CD'], ""],
-                    ["Siła nośna", results['lift'], "N"],
-                    ["Opór", results['drag'], "N"],
-                    ["L/D", results['L_D_ratio'], ""]
-                ])
-            messagebox.showinfo("Sukces", f"Zapisano: {file_path}")
-        except Exception as e:
-            messagebox.showerror("Błąd", f"Błąd zapisu: {e}")
-    
-    def save_plot(self):
-        """Save current plot as image"""
-        from tkinter import filedialog
-        
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".png", 
-            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("PDF files", "*.pdf")],
-            title="Zapisz wykres")
-        
-        if not file_path:
-            return
-        
-        try:
-            self.figure.savefig(file_path, dpi=300, bbox_inches='tight')
-            messagebox.showinfo("Sukces", f"Zapisano: {file_path}")
-        except Exception as e:
-            messagebox.showerror("Błąd", f"Błąd zapisu: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
