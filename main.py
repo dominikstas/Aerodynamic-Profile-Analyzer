@@ -3,10 +3,9 @@ from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-# from naca_data import naca_data  # Profile data from external file
 import aero_calculations
 
-# Sample data for testing (replace with actual naca_data import)
+# Sample data 
 naca_data = {
     "NACA 2412": {
         "alpha": [-10, -5, 0, 5, 10, 15, 20],
@@ -260,6 +259,15 @@ class Airfoil:
         # Create canvas
         self.canvas = FigureCanvasTkAgg(self.figure, parent)
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
+
+        # toolbar
+
+        from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk 
+        toolbar_frame = ttk.Frame(parent, style="Surface.TFrame")
+        toolbar_frame.pack(fill=tk.X, pady=(5, 5))
+        self.toolbar = NavigationToolbar2Tk(self.canvas, toolbar_frame)
+        self.toolbar.update()
+        
     
     def validate_inputs(self):
         """Validate user inputs"""

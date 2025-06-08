@@ -96,29 +96,3 @@ def analyze_airfoil(alpha: float, V: float, rho: float, S: float, profile_name: 
     
     return results
 
-# Example usage
-if __name__ == "__main__":
-    # This is just for demonstration/testing purposes
-    # In a real application, this data would be imported from naca_data.py
-    sample_profiles_data = {
-        "NACA 2412": {
-            "alpha": [-10, -5, 0, 5, 10, 15, 20],
-            "CL": [-0.6, -0.1, 0.4, 0.9, 1.3, 1.5, 1.2],
-            "CD": [0.035, 0.012, 0.008, 0.012, 0.035, 0.068, 0.12]
-        }
-    }
-    
-    # Test the analyze_airfoil function
-    result = analyze_airfoil(
-        alpha=5.0,
-        V=30.0,
-        rho=1.225,
-        S=15.0,
-        profile_name="NACA 2412",
-        profiles_data=sample_profiles_data
-    )
-    
-    # Print results
-    print("Analysis Results:")
-    for key, value in result.items():
-        print(f"{key}: {value}")
